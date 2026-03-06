@@ -5,7 +5,7 @@ description: "A RESTful API service for task management with user authentication
 
 ## Introduction
 
-App CR is a modern task management API built with Express.js, Prisma ORM, and PostgreSQL. It provides a complete backend solution for managing users and tasks with JWT-based authentication.
+App CR is a task management API built with Express.js, Prisma ORM, and PostgreSQL. It provides a backend foundation for managing users and tasks, with JWT authentication dependencies ready for implementation.
 
 <CardGroup cols={2}>
   <Card
@@ -41,14 +41,14 @@ App CR is a modern task management API built with Express.js, Prisma ORM, and Po
 ## Key Features
 
 <CardGroup cols={2}>
-  <Card title="User Authentication" icon="user-lock">
-    Secure user registration and authentication with JWT tokens and bcrypt password hashing
+  <Card title="User Registration" icon="user-plus">
+    Basic user registration endpoint with Prisma ORM and PostgreSQL
   </Card>
-  <Card title="Task Management" icon="list-check">
-    Complete CRUD operations for tasks with user ownership and authorization
+  <Card title="Database Foundation" icon="database">
+    Complete Prisma schema for Users and Tasks with relationships
   </Card>
-  <Card title="Prisma ORM" icon="cube">
-    Type-safe database access with automatic migrations and schema management
+  <Card title="Auth Dependencies" icon="lock">
+    JWT and bcrypt packages installed and ready for authentication implementation
   </Card>
   <Card title="Docker Ready" icon="docker">
     Production-ready Docker Compose setup with PostgreSQL database

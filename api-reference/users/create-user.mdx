@@ -36,10 +36,6 @@ POST /usuarios
   The password as stored in the database
 </ResponseField>
 
-<ResponseField name="createdAt" type="datetime">
-  Timestamp when the user was created (if defined in schema)
-</ResponseField>
-
 ## Status Codes
 
 - **201 Created** - User successfully created
@@ -64,8 +60,7 @@ curl -X POST http://localhost:3000/usuarios \
 {
   "id": 1,
   "email": "user@example.com",
-  "password": "securePassword123",
-  "createdAt": "2026-03-06T10:30:00.000Z"
+  "password": "securePassword123"
 }
 ```
 

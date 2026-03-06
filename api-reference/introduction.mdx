@@ -1,33 +1,65 @@
 ---
-title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+title: 'API Reference'
+description: 'Complete API endpoint documentation for App CR'
 ---
 
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
+## Overview
 
-## Welcome
+App CR provides REST API endpoints for user and task management. This section documents all available endpoints, their parameters, and expected responses.
 
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
+## Current Implementation Status
 
-<Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
->
-  View the OpenAPI specification file
-</Card>
+<Warning>
+  **Limited Implementation**: Currently, only the user registration endpoint is implemented. Task endpoints are documented based on the database schema but require backend implementation.
+</Warning>
+
+### Implemented Endpoints
+
+- ✅ **POST /usuarios** - Create a new user
+
+### Planned Endpoints (Not Yet Implemented)
+
+- ❌ **GET /usuarios** - Retrieve users
+- ❌ **POST /tasks** - Create a task
+- ❌ **GET /tasks** - Retrieve tasks
+- ❌ **PUT /tasks/:id** - Update a task
+- ❌ **DELETE /tasks/:id** - Delete a task
+
+## Base URL
+
+All API endpoints are relative to your server's base URL:
+
+```text
+http://localhost:3000
+```
+
+## Request/Response Format
+
+All requests and responses use JSON format. Include the Content-Type header:
+
+```bash
+Content-Type: application/json
+```
 
 ## Authentication
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
+<Note>
+  Authentication is not currently implemented. JWT tokens and bcrypt are installed but not yet integrated into the endpoints.
+</Note>
 
-```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
+When authentication is implemented, protected endpoints will require a JWT token in the Authorization header:
+
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
 ```
+
+## Explore Endpoints
+
+<CardGroup cols={2}>
+  <Card title="User Endpoints" icon="user" href="/api-reference/users/create-user">
+    User registration and management
+  </Card>
+  <Card title="Task Endpoints" icon="list-check" href="/api-reference/tasks/create-task">
+    Task CRUD operations (planned)
+  </Card>
+</CardGroup>

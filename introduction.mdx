@@ -5,22 +5,22 @@ description: Welcome to App CR - A RESTful API service for task management with 
 
 ## What is App CR?
 
-App CR is a lightweight RESTful API service built for task management with user authentication. It provides a backend solution for creating and managing tasks with user accounts, making it perfect for building todo applications, project management tools, or any application requiring task tracking functionality.
+App CR is a foundational RESTful API service for task management. It provides a backend starting point with user registration and a complete database schema for tasks, designed to be extended with authentication and task management endpoints.
 
 ## Key Features
 
 <CardGroup cols={2}>
-  <Card title="User Management" icon="users">
-    Create and manage user accounts with secure authentication
+  <Card title="User Registration" icon="user-plus">
+    Basic user registration endpoint implemented
   </Card>
-  <Card title="Task Management" icon="list-check">
-    Full CRUD operations for tasks with user-specific task lists
+  <Card title="Database Schema" icon="database">
+    Complete Prisma schema for Users and Tasks with relationships
   </Card>
-  <Card title="Database Integration" icon="database">
-    PostgreSQL database with Prisma ORM for type-safe queries
+  <Card title="Auth Ready" icon="shield">
+    JWT and bcrypt dependencies installed, ready for implementation
   </Card>
-  <Card title="RESTful API" icon="code">
-    Clean REST endpoints built with Express.js
+  <Card title="Express.js API" icon="code">
+    REST API foundation built with Express.js
   </Card>
 </CardGroup>
 
@@ -31,8 +31,8 @@ App CR is built with modern, reliable technologies:
 - **Express.js** - Fast and minimalist web framework for Node.js
 - **Prisma ORM** - Next-generation ORM for type-safe database access
 - **PostgreSQL** - Robust relational database
-- **JWT (JSON Web Tokens)** - Secure authentication mechanism
-- **bcryptjs** - Password hashing for secure credential storage
+- **JWT (JSON Web Tokens)** - Installed for future authentication implementation
+- **bcryptjs** - Installed for future password hashing
 - **CORS** - Cross-origin resource sharing enabled for frontend integration
 
 ## Architecture

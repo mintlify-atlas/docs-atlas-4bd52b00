@@ -1,21 +1,30 @@
 ---
 title: 'Authentication Overview'
-description: 'Learn how authentication works in App CR using JWT tokens and bcrypt password hashing'
+description: 'Authentication setup and planned implementation for App CR'
 ---
 
-## How Authentication Works
+<Warning>
+  **Authentication is not currently implemented.** The codebase has the necessary dependencies installed (`jsonwebtoken` and `bcryptjs`) but no authentication logic is active yet. This page describes the planned authentication architecture.
+</Warning>
 
-App CR uses a **JWT (JSON Web Token)** based authentication system to secure API endpoints and manage user sessions. The authentication flow combines industry-standard practices including:
+## Current State
 
-- **bcryptjs** for secure password hashing
-- **jsonwebtoken** for token generation and verification
-- **JWT_SECRET** environment variable for token signing
+App CR currently has:
+- ✅ JWT and bcrypt packages installed in `package.json`
+- ✅ `JWT_SECRET` environment variable defined but unused
+- ✅ User model with email and password fields
+- ❌ No password hashing implementation
+- ❌ No JWT token generation
+- ❌ No authentication middleware
+- ❌ No protected routes
 
-## Authentication Flow
+## Planned Authentication Flow
+
+When implemented, App CR will use **JWT (JSON Web Token)** based authentication:
 
 <Steps>
   <Step title="User Registration">
-    Users register by providing an email and password. The password is hashed using bcryptjs before being stored in the PostgreSQL database.
+    Users will register by providing an email and password. The password should be hashed using bcryptjs before storage.
     
     ```javascript
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -23,7 +32,7 @@ App CR uses a **JWT (JSON Web Token)** based authentication system to secure API
   </Step>
   
   <Step title="Token Generation">
-    Upon successful login, the server generates a JWT token signed with the `JWT_SECRET` environment variable.
+    Upon successful login, the server will generate a JWT token signed with the `JWT_SECRET` environment variable.
     
     ```javascript
     const token = jwt.sign(
@@ -35,7 +44,7 @@ App CR uses a **JWT (JSON Web Token)** based authentication system to secure API
   </Step>
   
   <Step title="Token Usage">
-    Clients include the JWT token in the `Authorization` header for authenticated requests:
+    Clients will include the JWT token in the `Authorization` header for authenticated requests:
     
     ```bash
     Authorization: Bearer <your-jwt-token>
@@ -43,7 +52,7 @@ App CR uses a **JWT (JSON Web Token)** based authentication system to secure API
   </Step>
   
   <Step title="Token Verification">
-    Protected endpoints verify the token before processing requests:
+    Protected endpoints will verify the token before processing requests:
     
     ```javascript
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -62,23 +71,25 @@ App CR's authentication system is built with the following dependencies:
 | `express` | ^5.2.1 | HTTP server framework |
 | `@prisma/client` | ^6.19.2 | Database ORM for user management |
 
-## Security Features
+## Available Dependencies
+
+The required authentication packages are already installed:
 
 <CardGroup cols={2}>
   <Card title="Password Hashing" icon="lock">
-    All passwords are hashed using bcryptjs with a salt factor of 10 before storage. Passwords are never stored in plain text.
+    **bcryptjs ^3.0.3** - Ready to use for hashing passwords with salt factor 10
   </Card>
   
   <Card title="JWT Tokens" icon="key">
-    Stateless authentication using signed JWT tokens. Tokens include user identity and expiration time.
+    **jsonwebtoken ^9.0.3** - Ready to use for token creation and validation
   </Card>
   
   <Card title="Environment Variables" icon="shield">
-    Sensitive configuration like `JWT_SECRET` is stored in environment variables, never in source code.
+    **JWT_SECRET** - Already defined in environment configuration (currently unused)
   </Card>
   
   <Card title="Database Security" icon="database">
-    Email uniqueness enforced at the database level using Prisma schema constraints.
+    Email uniqueness is enforced at the database level using Prisma `@unique` constraint
   </Card>
 </CardGroup>
 
@@ -97,7 +108,7 @@ model User {
 
 **Key Points:**
 - `email` is unique and serves as the username
-- `password` stores the bcrypt hash (never plain text)
+- `password` currently stores plain text (needs hashing implementation)
 - Each user can have multiple tasks (one-to-many relationship)
 
 <Note>
@@ -106,9 +117,9 @@ model User {
 
 ## Environment Configuration
 
-Authentication requires the following environment variable:
+The `JWT_SECRET` environment variable is defined but not yet used:
 
-```bash
+```bash .env
 JWT_SECRET=your-secret-key-here
 ```
 
@@ -120,12 +131,11 @@ JWT_SECRET=your-secret-key-here
   ```
 </Warning>
 
-## Quick Example
+## Current Implementation
 
-Here's a complete authentication flow example:
+The only implemented endpoint is user registration without authentication:
 
-<CodeGroup>
-```bash Registration
+```bash
 curl -X POST http://localhost:3000/usuarios \
   -H "Content-Type: application/json" \
   -d '{
@@ -134,18 +144,18 @@ curl -X POST http://localhost:3000/usuarios \
   }'
 ```
 
-```json Response
+**Response:**
+```json
 {
   "id": 1,
   "email": "user@example.com",
-  "password": "$2a$10$...(hashed)"
+  "password": "securePassword123"
 }
 ```
-</CodeGroup>
 
-<Note>
-  Currently, the `/usuarios` endpoint stores passwords as plain text in the implementation. See the [JWT Tokens guide](/authentication/jwt-tokens) for the recommended secure implementation with password hashing.
-</Note>
+<Warning>
+  Passwords are currently stored as **plain text**. This is insecure and should not be used in production. See the [JWT Implementation guide](/authentication/jwt-tokens) for secure password hashing.
+</Warning>
 
 ## Next Steps
 
