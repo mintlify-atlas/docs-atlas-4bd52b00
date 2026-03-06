@@ -1,0 +1,62 @@
+{
+  "projectType": "api-service",
+  "projectName": "App CR",
+  "projectDescription": "A RESTful API service for task management with user authentication, built with Express.js, Prisma, and PostgreSQL",
+  "theme": "palm",
+  "primaryColor": "#3b82f6",
+  "lightColor": "#60a5fa",
+  "darkColor": "#2563eb",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": ["introduction", "quickstart", "installation"]
+          },
+          {
+            "group": "Authentication",
+            "pages": ["authentication/overview", "authentication/jwt-tokens"]
+          },
+          {
+            "group": "Database",
+            "pages": ["database/schema", "database/migrations", "database/setup"]
+          },
+          {
+            "group": "Deployment",
+            "pages": ["deployment/docker", "deployment/environment", "deployment/production"]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Users",
+            "pages": ["api-reference/users/create-user", "api-reference/users/get-users"]
+          },
+          {
+            "group": "Tasks",
+            "pages": ["api-reference/tasks/create-task", "api-reference/tasks/get-tasks", "api-reference/tasks/update-task", "api-reference/tasks/delete-task"]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "User registration and authentication with JWT",
+    "Task CRUD operations with user ownership",
+    "PostgreSQL database with Prisma ORM",
+    "Docker Compose setup for easy deployment",
+    "Password hashing with bcryptjs"
+  ],
+  "publicApiSurface": [
+    "POST /usuarios - Create a new user",
+    "GET /usuarios - Get all users",
+    "POST /tasks - Create a new task",
+    "GET /tasks - Get all tasks",
+    "PUT /tasks/:id - Update a task",
+    "DELETE /tasks/:id - Delete a task"
+  ]
+}
