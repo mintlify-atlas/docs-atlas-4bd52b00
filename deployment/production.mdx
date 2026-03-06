@@ -1,0 +1,495 @@
+---
+title: 'Production Deployment'
+description: 'Best practices for deploying App CR to production'
+---
+
+# Production Deployment
+
+This guide covers best practices and security considerations for deploying App CR to production environments.
+
+## Pre-Deployment Checklist
+
+Before deploying to production, ensure you've completed these critical steps:
+
+<Steps>
+  <Step title="Security Configuration">
+    - [ ] Change default database credentials
+    - [ ] Generate strong JWT_SECRET
+    - [ ] Remove hardcoded secrets from code
+    - [ ] Enable HTTPS/TLS
+    - [ ] Configure CORS properly
+  </Step>
+
+  <Step title="Database Setup">
+    - [ ] Use managed database service (not local Docker)
+    - [ ] Enable automated backups
+    - [ ] Set up connection pooling
+    - [ ] Run database migrations
+    - [ ] Test database connectivity
+  </Step>
+
+  <Step title="Application Configuration">
+    - [ ] Set NODE_ENV=production
+    - [ ] Configure environment variables on hosting platform
+    - [ ] Review and update CORS origins
+    - [ ] Set appropriate PORT
+    - [ ] Enable logging and monitoring
+  </Step>
+
+  <Step title="Testing">
+    - [ ] Test all API endpoints
+    - [ ] Verify authentication flow
+    - [ ] Check database operations
+    - [ ] Load test the application
+    - [ ] Test error handling
+  </Step>
+</Steps>
+
+## Security Best Practices
+
+### 1. Database Security
+
+<Warning>
+  **Never use the default Docker Compose credentials in production!**
+  
+  The development credentials (`user_admin`/`password123`) are **not secure** and should only be used locally.
+</Warning>
+
+**Production Database Requirements:**
+
+- Use a managed database service (AWS RDS, DigitalOcean, Railway, etc.)
+- Generate strong passwords (20+ characters, mixed case, numbers, symbols)
+- Restrict database access to your application's IP addresses
+- Enable SSL/TLS for database connections
+- Regular automated backups with point-in-time recovery
+
+**Example Secure DATABASE_URL:**
+
+```bash
+DATABASE_URL="postgresql://prod_user_a9f2:Xk9$mP2#vL8qR5*nW3@prod-db.region.provider.com:5432/app_cr_prod?sslmode=require"
+```
+
+### 2. JWT Secret Security
+
+Generate a cryptographically secure JWT secret:
+
+```bash
+# Generate a 256-bit secret
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+```
+
+<Note>
+  Store your JWT_SECRET in your hosting platform's environment variable manager, never in code or version control.
+</Note>
+
+### 3. Password Hashing
+
+The application uses `bcryptjs` for password hashing. Ensure this is configured properly:
+
+```javascript
+const bcrypt = require('bcryptjs');
+
+// When creating users, hash passwords
+const hashedPassword = await bcrypt.hash(password, 10);
+
+// When verifying, compare hashes
+const isValid = await bcrypt.compare(password, hashedPassword);
+```
+
+### 4. CORS Configuration
+
+Restrict CORS to your frontend domain only:
+
+```javascript backend/index.js
+const cors = require('cors');
+
+// Development (allow all)
+app.use(cors());
+
+// Production (restrict to your domain)
+app.use(cors({
+  origin: 'https://your-frontend-domain.com',
+  credentials: true,
+  optionsSuccessStatus: 200
+}));
+```
+
+### 5. Environment Variables
+
+Never hardcode sensitive values. Use environment variables:
+
+```javascript
+// ❌ Bad - hardcoded
+const TOKEN = 'my-secret-key';
+
+// ✅ Good - from environment
+const TOKEN = process.env.JWT_SECRET;
+if (!TOKEN) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
+```
+
+## Database Migration Strategy
+
+### Running Migrations in Production
+
+<Warning>
+  Always backup your database before running migrations in production!
+</Warning>
+
+<Steps>
+  <Step title="Backup Database">
+    Create a backup before any schema changes:
+    
+    ```bash
+    # If using managed service, use their backup feature
+    # Or manually backup:
+    pg_dump -U user -d database > backup_$(date +%Y%m%d_%H%M%S).sql
+    ```
+  </Step>
+
+  <Step title="Test Migrations">
+    Test migrations in a staging environment first:
+    
+    ```bash
+    npx prisma migrate deploy --preview-feature
+    ```
+  </Step>
+
+  <Step title="Deploy Migrations">
+    Deploy migrations to production:
+    
+    ```bash
+    cd backend
+    npx prisma migrate deploy
+    ```
+  </Step>
+
+  <Step title="Verify Database">
+    Verify the schema is correct:
+    
+    ```bash
+    npx prisma db pull
+    npx prisma generate
+    ```
+  </Step>
+</Steps>
+
+## Deployment Platforms
+
+### Railway
+
+Railway provides easy deployment for Node.js and PostgreSQL.
+
+<Steps>
+  <Step title="Install Railway CLI">
+    ```bash
+    npm install -g @railway/cli
+    railway login
+    ```
+  </Step>
+
+  <Step title="Initialize Project">
+    ```bash
+    railway init
+    ```
+  </Step>
+
+  <Step title="Add PostgreSQL">
+    ```bash
+    railway add postgresql
+    ```
+    
+    Railway automatically sets the DATABASE_URL variable.
+  </Step>
+
+  <Step title="Configure Environment Variables">
+    ```bash
+    railway variables set JWT_SECRET=your-secret
+    railway variables set PORT=3000
+    ```
+  </Step>
+
+  <Step title="Deploy">
+    ```bash
+    railway up
+    ```
+  </Step>
+</Steps>
+
+### Heroku
+
+<Steps>
+  <Step title="Install Heroku CLI">
+    ```bash
+    npm install -g heroku
+    heroku login
+    ```
+  </Step>
+
+  <Step title="Create Application">
+    ```bash
+    heroku create app-cr-backend
+    ```
+  </Step>
+
+  <Step title="Add PostgreSQL">
+    ```bash
+    heroku addons:create heroku-postgresql:mini
+    ```
+  </Step>
+
+  <Step title="Set Environment Variables">
+    ```bash
+    heroku config:set JWT_SECRET=your-secret
+    heroku config:set NODE_ENV=production
+    ```
+  </Step>
+
+  <Step title="Deploy">
+    ```bash
+    git push heroku main
+    ```
+  </Step>
+</Steps>
+
+### AWS/DigitalOcean/VPS
+
+For custom VPS deployments:
+
+<Steps>
+  <Step title="Install Docker">
+    ```bash
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sh get-docker.sh
+    ```
+  </Step>
+
+  <Step title="Clone Repository">
+    ```bash
+    git clone your-repo-url
+    cd your-repo
+    ```
+  </Step>
+
+  <Step title="Set Environment Variables">
+    Create `/etc/systemd/system/app-cr.service` or use `.env` file
+  </Step>
+
+  <Step title="Start with Docker Compose">
+    ```bash
+    docker-compose -f docker-compose.prod.yml up -d
+    ```
+  </Step>
+</Steps>
+
+## Monitoring and Logging
+
+### Application Logging
+
+Add structured logging to your application:
+
+```javascript
+const winston = require('winston');
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  transports: [
+    new winston.transports.File({ filename: 'error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'combined.log' })
+  ]
+});
+
+// Use logger instead of console.log
+logger.info('Server started', { port: PORT });
+logger.error('Database error', { error: error.message });
+```
+
+### Health Check Endpoint
+
+Add a health check endpoint for monitoring:
+
+```javascript backend/index.js
+app.get('/health', async (req, res) => {
+  try {
+    // Check database connection
+    await prisma.$queryRaw`SELECT 1`;
+    
+    res.status(200).json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime()
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'unhealthy',
+      error: error.message
+    });
+  }
+});
+```
+
+### Monitoring Services
+
+Consider using:
+- **Sentry** - Error tracking and monitoring
+- **LogRocket** - Session replay and logging
+- **Datadog** - Application performance monitoring
+- **New Relic** - Full-stack observability
+
+## Performance Optimization
+
+### 1. Database Connection Pooling
+
+Configure Prisma connection pooling:
+
+```javascript
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL + '?connection_limit=10&pool_timeout=20'
+    }
+  }
+});
+```
+
+### 2. Enable Compression
+
+```javascript
+const compression = require('compression');
+app.use(compression());
+```
+
+### 3. Rate Limiting
+
+Protect against abuse:
+
+```javascript
+const rateLimit = require('express-rate-limit');
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
+
+app.use('/api/', limiter);
+```
+
+### 4. Caching
+
+Implement caching for frequently accessed data:
+
+```javascript
+const redis = require('redis');
+const client = redis.createClient({
+  url: process.env.REDIS_URL
+});
+
+// Cache database queries
+const getCachedData = async (key) => {
+  const cached = await client.get(key);
+  if (cached) return JSON.parse(cached);
+  
+  const data = await prisma.user.findMany();
+  await client.setEx(key, 3600, JSON.stringify(data));
+  return data;
+};
+```
+
+## Backup Strategy
+
+### Automated Database Backups
+
+<Note>
+  Most managed database services provide automated backups. Enable this feature!
+</Note>
+
+### Manual Backup Script
+
+```bash backup.sh
+#!/bin/bash
+
+DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_DIR="/backups"
+DB_NAME="app_cr_prod"
+
+# Create backup
+pg_dump $DATABASE_URL > $BACKUP_DIR/backup_$DATE.sql
+
+# Compress
+gzip $BACKUP_DIR/backup_$DATE.sql
+
+# Upload to S3 (optional)
+aws s3 cp $BACKUP_DIR/backup_$DATE.sql.gz s3://your-bucket/backups/
+
+# Delete old backups (keep last 7 days)
+find $BACKUP_DIR -name "backup_*.sql.gz" -mtime +7 -delete
+```
+
+## SSL/TLS Configuration
+
+Always use HTTPS in production:
+
+### Using Reverse Proxy (Nginx)
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name api.yourdomain.com;
+    
+    ssl_certificate /etc/ssl/certs/cert.pem;
+    ssl_certificate_key /etc/ssl/private/key.pem;
+    
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+## Rollback Strategy
+
+Prepare for potential issues:
+
+1. **Keep previous version available**: Don't delete old deployments immediately
+2. **Database migrations**: Create down migrations for schema changes
+3. **Feature flags**: Use feature flags to disable new features quickly
+4. **Blue-Green deployment**: Maintain two production environments
+
+## Production Environment Variables
+
+Complete list of production environment variables:
+
+```bash
+# Required
+DATABASE_URL="postgresql://user:password@host:5432/database?sslmode=require"
+JWT_SECRET="your-256-bit-secret"
+PORT=3000
+NODE_ENV=production
+
+# Optional (Recommended)
+CORS_ORIGIN="https://your-frontend.com"
+LOG_LEVEL=info
+RATE_LIMIT_MAX=100
+RATE_LIMIT_WINDOW_MS=900000
+
+# Monitoring (Optional)
+SENTRY_DSN="https://your-sentry-dsn"
+REDIS_URL="redis://user:password@host:6379"
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Docker Setup" icon="docker" href="/deployment/docker">
+    Review Docker configuration options
+  </Card>
+  <Card title="Environment Variables" icon="gear" href="/deployment/environment">
+    Configure your environment variables
+  </Card>
+</CardGroup>

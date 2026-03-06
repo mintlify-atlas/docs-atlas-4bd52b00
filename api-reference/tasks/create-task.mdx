@@ -1,0 +1,100 @@
+---
+title: 'Create Task'
+api: 'POST /tasks'
+description: 'Create a new task for the authenticated user'
+---
+
+<Note>
+  This endpoint requires implementation in the backend. Documentation reflects the expected API design based on the Task model schema.
+</Note>
+
+## Authentication
+
+This endpoint requires a valid JWT token in the Authorization header.
+
+```
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+## Request Body
+
+<ParamField body="title" type="string" required>
+  The title of the task
+</ParamField>
+
+<ParamField body="description" type="string">
+  Optional description of the task
+</ParamField>
+
+<ParamField body="completed" type="boolean" default="false">
+  Whether the task is completed. Defaults to false if not provided.
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="integer">
+  The unique identifier for the task
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  The title of the task
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  The description of the task (null if not provided)
+</ResponseField>
+
+<ResponseField name="completed" type="boolean">
+  Whether the task is completed
+</ResponseField>
+
+<ResponseField name="userId" type="integer">
+  The ID of the user who owns this task
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X POST http://localhost:3000/tasks \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "title": "Complete API documentation",
+    "description": "Write comprehensive API docs for all task endpoints",
+    "completed": false
+  }'
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 201 Created
+{
+  "id": 1,
+  "title": "Complete API documentation",
+  "description": "Write comprehensive API docs for all task endpoints",
+  "completed": false,
+  "userId": 5
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "Title is required"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "Invalid or missing authentication token"
+}
+```
+
+```json 500 Internal Server Error
+{
+  "error": "Error creating task"
+}
+```
+
+</ResponseExample>

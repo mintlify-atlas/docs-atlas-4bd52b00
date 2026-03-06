@@ -1,0 +1,534 @@
+---
+title: 'Database Setup'
+description: 'Configure PostgreSQL database connection and environment for App CR'
+icon: 'wrench'
+---
+
+## Overview
+
+App CR uses PostgreSQL 15 as the database, managed through Docker Compose for development and Prisma ORM for database operations.
+
+## Prerequisites
+
+<CardGroup cols={2}>
+  <Card title="Docker & Docker Compose" icon="docker">
+    Required to run PostgreSQL container
+  </Card>
+  <Card title="Node.js & npm" icon="node">
+    Required to run Prisma CLI commands
+  </Card>
+</CardGroup>
+
+---
+
+## Quick Start
+
+<Steps>
+  <Step title="Start PostgreSQL">
+    Launch the PostgreSQL container:
+    
+    ```bash
+    cd ~/workspace/source
+    docker-compose up -d postgres
+    ```
+    
+    Verify the container is running:
+    
+    ```bash
+    docker-compose ps
+    ```
+  </Step>
+  
+  <Step title="Configure Environment">
+    Create `.env` file in the backend directory:
+    
+    ```bash
+    cd ~/workspace/source/backend
+    touch .env
+    ```
+    
+    Add the database connection URL:
+    
+    ```bash
+    DATABASE_URL="postgresql://user_admin:password123@localhost:5432/mi_db_crud"
+    ```
+  </Step>
+  
+  <Step title="Run Migrations">
+    Apply database schema:
+    
+    ```bash
+    npx prisma migrate deploy
+    ```
+  </Step>
+  
+  <Step title="Generate Prisma Client">
+    Generate TypeScript types:
+    
+    ```bash
+    npx prisma generate
+    ```
+  </Step>
+</Steps>
+
+---
+
+## Docker Configuration
+
+### PostgreSQL Container
+
+The `docker-compose.yml` defines the PostgreSQL service:
+
+```yaml
+services:
+  postgres:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: user_admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: mi_db_crud
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+```
+
+### Configuration Details
+
+<ParamField path="image" type="string" default="postgres:15">
+  PostgreSQL version 15 official Docker image
+</ParamField>
+
+<ParamField path="restart" type="string" default="always">
+  Automatically restart container if it stops
+</ParamField>
+
+<ParamField path="POSTGRES_USER" type="string" default="user_admin" required>
+  Database superuser username
+</ParamField>
+
+<ParamField path="POSTGRES_PASSWORD" type="string" default="password123" required>
+  Database superuser password
+  
+  <Warning>Change this in production environments</Warning>
+</ParamField>
+
+<ParamField path="POSTGRES_DB" type="string" default="mi_db_crud" required>
+  Initial database name
+</ParamField>
+
+<ParamField path="ports" type="array" default="5432:5432">
+  Maps container port 5432 to host port 5432
+</ParamField>
+
+<ParamField path="volumes" type="array">
+  Persists database data in Docker volume `postgres_data`
+</ParamField>
+
+### Docker Commands
+
+<CodeGroup>
+
+```bash Start Database
+# Start PostgreSQL in background
+docker-compose up -d postgres
+```
+
+```bash Stop Database
+# Stop PostgreSQL container
+docker-compose stop postgres
+```
+
+```bash View Logs
+# View PostgreSQL logs
+docker-compose logs postgres
+
+# Follow logs in real-time
+docker-compose logs -f postgres
+```
+
+```bash Restart Database
+# Restart PostgreSQL container
+docker-compose restart postgres
+```
+
+```bash Remove Database
+# Stop and remove container (keeps volume)
+docker-compose down
+
+# Remove container AND volume (deletes all data)
+docker-compose down -v
+```
+
+</CodeGroup>
+
+---
+
+## Environment Variables
+
+### DATABASE_URL Format
+
+The `DATABASE_URL` follows PostgreSQL connection string format:
+
+```bash
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=SCHEMA"
+```
+
+### Default Configuration
+
+```bash
+DATABASE_URL="postgresql://user_admin:password123@localhost:5432/mi_db_crud"
+```
+
+### URL Components
+
+<ResponseField name="Protocol" type="string" required>
+  `postgresql://` - PostgreSQL protocol identifier
+</ResponseField>
+
+<ResponseField name="User" type="string" default="user_admin" required>
+  Database username from `POSTGRES_USER`
+</ResponseField>
+
+<ResponseField name="Password" type="string" default="password123" required>
+  Database password from `POSTGRES_PASSWORD`
+</ResponseField>
+
+<ResponseField name="Host" type="string" default="localhost" required>
+  Database host
+  - `localhost` for local development
+  - `postgres` when connecting from another Docker container
+  - Production hostname/IP in deployment
+</ResponseField>
+
+<ResponseField name="Port" type="number" default="5432" required>
+  PostgreSQL port (default: 5432)
+</ResponseField>
+
+<ResponseField name="Database" type="string" default="mi_db_crud" required>
+  Database name from `POSTGRES_DB`
+</ResponseField>
+
+<ResponseField name="Schema" type="string" default="public">
+  Optional schema name (defaults to `public`)
+  
+  Example: `?schema=app_schema`
+</ResponseField>
+
+### Environment File Location
+
+```bash
+~/workspace/source/backend/.env
+```
+
+<Warning>
+  Never commit `.env` files to version control. Add to `.gitignore`:
+  ```gitignore
+  .env
+  .env.local
+  .env.*.local
+  ```
+</Warning>
+
+---
+
+## Database Connection
+
+### Using Prisma Client
+
+<CodeGroup>
+
+```typescript Initialize Client
+// backend/src/db.ts
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient({
+  log: ['query', 'error', 'warn'],
+});
+
+export default prisma;
+```
+
+```typescript Query Example
+import prisma from './db';
+
+// Fetch all users with their tasks
+const users = await prisma.user.findMany({
+  include: {
+    tasks: true,
+  },
+});
+```
+
+```typescript Create Record
+import prisma from './db';
+
+// Create new user
+const newUser = await prisma.user.create({
+  data: {
+    email: 'user@example.com',
+    password: 'hashed_password',
+  },
+});
+```
+
+```typescript Transaction Example
+import prisma from './db';
+
+// Create user and task in transaction
+const result = await prisma.$transaction([
+  prisma.user.create({
+    data: {
+      email: 'user@example.com',
+      password: 'hashed_password',
+    },
+  }),
+  prisma.task.create({
+    data: {
+      title: 'First Task',
+      userId: 1,
+    },
+  }),
+]);
+```
+
+</CodeGroup>
+
+### Connection Pooling
+
+Prisma automatically manages connection pooling. Configure pool size via environment:
+
+```bash
+DATABASE_URL="postgresql://user_admin:password123@localhost:5432/mi_db_crud?connection_limit=10"
+```
+
+<ParamField path="connection_limit" type="number" default="10">
+  Maximum number of database connections in the pool
+</ParamField>
+
+---
+
+## Testing Database Connection
+
+### Using Prisma Studio
+
+Open the interactive database browser:
+
+```bash
+cd ~/workspace/source/backend
+npx prisma studio
+```
+
+Access at: `http://localhost:5555`
+
+### Using psql CLI
+
+Connect directly to PostgreSQL:
+
+```bash
+# Using docker-compose exec
+docker-compose exec postgres psql -U user_admin -d mi_db_crud
+
+# Or using psql if installed locally
+psql postgresql://user_admin:password123@localhost:5432/mi_db_crud
+```
+
+### Test Queries
+
+<CodeGroup>
+
+```sql List Tables
+-- View all tables
+\dt
+
+-- Expected output:
+-- User
+-- Task
+-- _prisma_migrations
+```
+
+```sql Describe Table
+-- View User table structure
+\d "User"
+
+-- View Task table structure
+\d "Task"
+```
+
+```sql Sample Query
+-- Count users
+SELECT COUNT(*) FROM "User";
+
+-- Count tasks
+SELECT COUNT(*) FROM "Task";
+```
+
+```sql Check Migrations
+-- View applied migrations
+SELECT * FROM _prisma_migrations;
+```
+
+</CodeGroup>
+
+---
+
+## Production Setup
+
+### Environment Configuration
+
+For production, use secure environment variables:
+
+```bash
+DATABASE_URL="postgresql://prod_user:SECURE_PASSWORD@prod-host.example.com:5432/app_cr_prod?sslmode=require"
+```
+
+<ParamField path="sslmode" type="string" default="require">
+  SSL/TLS mode for encrypted connections
+  
+  Values:
+  - `disable` - No SSL (development only)
+  - `require` - Require SSL
+  - `verify-ca` - Require and verify CA
+  - `verify-full` - Full certificate verification
+</ParamField>
+
+### Security Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use strong passwords" icon="lock">
+    - Minimum 16 characters
+    - Mix of uppercase, lowercase, numbers, symbols
+    - Use password manager or secrets management service
+  </Accordion>
+  
+  <Accordion title="Enable SSL/TLS" icon="shield">
+    Always use encrypted connections in production:
+    ```bash
+    DATABASE_URL="...?sslmode=require"
+    ```
+  </Accordion>
+  
+  <Accordion title="Restrict database access" icon="user-lock">
+    - Use firewall rules to limit access
+    - Create application-specific database user (not superuser)
+    - Grant minimal required permissions
+  </Accordion>
+  
+  <Accordion title="Use secrets management" icon="key">
+    Store `DATABASE_URL` in:
+    - AWS Secrets Manager
+    - HashiCorp Vault
+    - GitHub Secrets (for CI/CD)
+    - Never hardcode in application code
+  </Accordion>
+  
+  <Accordion title="Enable connection pooling" icon="network-wired">
+    Use connection pooler like PgBouncer for high-traffic applications:
+    ```bash
+    DATABASE_URL="postgresql://user:pass@pgbouncer:6432/db?pgbouncer=true"
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Troubleshooting
+
+### Connection Refused
+
+**Error:** `ECONNREFUSED 127.0.0.1:5432`
+
+<Steps>
+  <Step title="Check PostgreSQL is running">
+    ```bash
+    docker-compose ps postgres
+    ```
+  </Step>
+  
+  <Step title="Start PostgreSQL if stopped">
+    ```bash
+    docker-compose up -d postgres
+    ```
+  </Step>
+  
+  <Step title="Verify port mapping">
+    ```bash
+    docker-compose port postgres 5432
+    # Should output: 0.0.0.0:5432
+    ```
+  </Step>
+</Steps>
+
+### Authentication Failed
+
+**Error:** `password authentication failed for user`
+
+<Steps>
+  <Step title="Verify credentials">
+    Check `.env` file matches `docker-compose.yml`:
+    - User: `user_admin`
+    - Password: `password123`
+    - Database: `mi_db_crud`
+  </Step>
+  
+  <Step title="Recreate container if changed">
+    ```bash
+    docker-compose down
+    docker-compose up -d postgres
+    ```
+  </Step>
+</Steps>
+
+### Database Does Not Exist
+
+**Error:** `database "mi_db_crud" does not exist`
+
+<Steps>
+  <Step title="Check database name in URL">
+    Ensure `DATABASE_URL` uses correct database name:
+    ```bash
+    DATABASE_URL="postgresql://user_admin:password123@localhost:5432/mi_db_crud"
+    ```
+  </Step>
+  
+  <Step title="Create database manually">
+    ```bash
+    docker-compose exec postgres createdb -U user_admin mi_db_crud
+    ```
+  </Step>
+</Steps>
+
+### Schema Out of Sync
+
+**Error:** `The database schema is not in sync with your Prisma schema`
+
+<Steps>
+  <Step title="Run migrations">
+    ```bash
+    npx prisma migrate deploy
+    ```
+  </Step>
+  
+  <Step title="Regenerate client">
+    ```bash
+    npx prisma generate
+    ```
+  </Step>
+</Steps>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Database Schema" icon="database" href="/database/schema">
+    Explore the complete database schema
+  </Card>
+  <Card title="Run Migrations" icon="arrows-rotate" href="/database/migrations">
+    Learn how to manage database migrations
+  </Card>
+</CardGroup>

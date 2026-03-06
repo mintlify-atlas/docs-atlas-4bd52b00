@@ -1,0 +1,541 @@
+---
+title: 'JWT Token Implementation'
+description: 'Complete guide to implementing JWT authentication in App CR with code examples'
+---
+
+## Overview
+
+App CR uses **JSON Web Tokens (JWT)** for stateless authentication. This guide covers the complete implementation including token generation, validation, and best practices.
+
+## Dependencies
+
+The JWT implementation relies on these packages (from `package.json`):
+
+```json
+{
+  "dependencies": {
+    "jsonwebtoken": "^9.0.3",
+    "bcryptjs": "^3.0.3",
+    "express": "^5.2.1",
+    "@prisma/client": "^6.19.2"
+  },
+  "devDependencies": {
+    "dotenv": "^17.3.1"
+  }
+}
+```
+
+## JWT Configuration
+
+### Environment Setup
+
+The JWT secret is loaded from environment variables in `backend/index.js:11`:
+
+```javascript
+require('dotenv').config();
+const jwt = require('jsonwebtoken');
+
+const TOKEN = process.env.JWT_SECRET; // Secret key for signing tokens
+```
+
+<Warning>
+  **Security Critical:** The `JWT_SECRET` must be:
+  - At least 256 bits (32 characters) long
+  - Randomly generated
+  - Stored securely in `.env` file
+  - Never committed to version control
+</Warning>
+
+### Generate a Secure Secret
+
+```bash
+# Generate a cryptographically secure secret
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+```
+
+Then add to your `.env` file:
+
+```bash
+JWT_SECRET=your_generated_secret_here
+PORT=3000
+DATABASE_URL=postgresql://user:password@localhost:5432/appcrdb
+```
+
+## User Registration with Password Hashing
+
+The current implementation in `backend/index.js:24-36` needs to be updated to hash passwords:
+
+### Current Implementation (Insecure)
+
+```javascript
+app.post('/usuarios', async (req, res) => {
+  try {
+    const nuevoUsuario = await prisma.user.create({
+      data: {
+        email: req.body.email,
+        password: req.body.password // ❌ Plain text password
+      }
+    });
+    res.status(201).json(nuevoUsuario);
+  } catch (error) {
+    console.log("DETALLE DEL ERROR:", error);
+    res.status(500).json({ error: "Error al insertar en Postgres" });
+  }
+});
+```
+
+### Recommended Secure Implementation
+
+```javascript
+const bcrypt = require('bcryptjs');
+
+app.post('/usuarios', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+    
+    // Hash password with salt rounds of 10
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    const nuevoUsuario = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword // ✅ Hashed password
+      }
+    });
+    
+    // Don't send password back in response
+    const { password: _, ...userWithoutPassword } = nuevoUsuario;
+    res.status(201).json(userWithoutPassword);
+    
+  } catch (error) {
+    console.log("DETALLE DEL ERROR:", error);
+    
+    // Handle unique constraint violation
+    if (error.code === 'P2002') {
+      return res.status(409).json({ error: "Email already exists" });
+    }
+    
+    res.status(500).json({ error: "Error al insertar en Postgres" });
+  }
+});
+```
+
+<Accordion title="What is bcrypt and why use it?">
+  **bcrypt** is a password hashing function designed to be slow and computationally expensive, making it resistant to brute-force attacks.
+  
+  - **Salt rounds (10)**: Each increment doubles the time needed to hash. 10 rounds is a good balance between security and performance.
+  - **Automatic salting**: bcrypt generates a unique salt for each password
+  - **One-way function**: Passwords cannot be reversed from the hash
+  
+  Example hash output:
+  ```
+  $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
+  ```
+  
+  - `$2a$` - bcrypt algorithm identifier
+  - `10$` - cost factor (number of rounds)
+  - Next 22 chars - the salt
+  - Remaining chars - the actual password hash
+</Accordion>
+
+## User Login with JWT Token Generation
+
+Implement a login endpoint that verifies credentials and returns a JWT token:
+
+```javascript
+app.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+    
+    // Find user by email
+    const user = await prisma.user.findUnique({
+      where: { email }
+    });
+    
+    if (!user) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+    
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    
+    if (!isValidPassword) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+    
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        userId: user.id, 
+        email: user.email 
+      },
+      process.env.JWT_SECRET,
+      { 
+        expiresIn: '24h' // Token expires in 24 hours
+      }
+    );
+    
+    res.json({ 
+      token,
+      user: {
+        id: user.id,
+        email: user.email
+      }
+    });
+    
+  } catch (error) {
+    console.log("DETALLE DEL ERROR:", error);
+    res.status(500).json({ error: "Error during login" });
+  }
+});
+```
+
+<Note>
+  **Security Best Practice:** Always return the same generic error message ("Invalid credentials") whether the email doesn't exist or the password is wrong. This prevents attackers from enumerating valid email addresses.
+</Note>
+
+## JWT Middleware for Protected Routes
+
+Create middleware to verify JWT tokens on protected endpoints:
+
+```javascript
+// Middleware to verify JWT tokens
+const authenticateToken = (req, res, next) => {
+  // Get token from Authorization header
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Format: "Bearer TOKEN"
+  
+  if (!token) {
+    return res.status(401).json({ error: "No token provided" });
+  }
+  
+  try {
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Attach user info to request object
+    req.user = decoded;
+    next();
+    
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: "Token expired" });
+    }
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(403).json({ error: "Invalid token" });
+    }
+    return res.status(403).json({ error: "Token verification failed" });
+  }
+};
+```
+
+### Using the Middleware
+
+Protect routes by adding the middleware:
+
+```javascript
+// Public route - no authentication needed
+app.post('/usuarios', async (req, res) => { /* ... */ });
+app.post('/login', async (req, res) => { /* ... */ });
+
+// Protected route - requires valid JWT token
+app.get('/me', authenticateToken, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: {
+        id: true,
+        email: true,
+        tasks: true
+      }
+    });
+    
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: "Error fetching user" });
+  }
+});
+
+// Get user's tasks - protected
+app.get('/tasks', authenticateToken, async (req, res) => {
+  try {
+    const tasks = await prisma.task.findMany({
+      where: { userId: req.user.userId }
+    });
+    
+    res.json(tasks);
+  } catch (error) {
+    res.status(500).json({ error: "Error fetching tasks" });
+  }
+});
+```
+
+## Complete Authentication Flow Examples
+
+<Steps>
+  <Step title="Register a New User">
+    ```bash
+    curl -X POST http://localhost:3000/usuarios \
+      -H "Content-Type: application/json" \
+      -d '{
+        "email": "alice@example.com",
+        "password": "SecurePass123!"
+      }'
+    ```
+    
+    Response:
+    ```json
+    {
+      "id": 1,
+      "email": "alice@example.com"
+    }
+    ```
+  </Step>
+  
+  <Step title="Login to Get JWT Token">
+    ```bash
+    curl -X POST http://localhost:3000/login \
+      -H "Content-Type: application/json" \
+      -d '{
+        "email": "alice@example.com",
+        "password": "SecurePass123!"
+      }'
+    ```
+    
+    Response:
+    ```json
+    {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "user": {
+        "id": 1,
+        "email": "alice@example.com"
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="Access Protected Endpoint">
+    ```bash
+    curl -X GET http://localhost:3000/me \
+      -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    ```
+    
+    Response:
+    ```json
+    {
+      "id": 1,
+      "email": "alice@example.com",
+      "tasks": []
+    }
+    ```
+  </Step>
+</Steps>
+
+## JWT Token Structure
+
+A JWT token consists of three parts separated by dots:
+
+```
+header.payload.signature
+```
+
+<Accordion title="Decode a JWT Token">
+  You can decode (but not verify) a JWT token at [jwt.io](https://jwt.io) or programmatically:
+  
+  ```javascript
+  const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
+  const decoded = jwt.decode(token);
+  
+  console.log(decoded);
+  // {
+  //   userId: 1,
+  //   email: "alice@example.com",
+  //   iat: 1709755200,  // Issued at
+  //   exp: 1709841600   // Expires at
+  // }
+  ```
+  
+  <Warning>
+    `jwt.decode()` only decodes the token without verifying the signature. Always use `jwt.verify()` in production to ensure the token is valid and hasn't been tampered with.
+  </Warning>
+</Accordion>
+
+## Token Expiration and Refresh
+
+### Setting Token Expiration
+
+Tokens should have a reasonable expiration time:
+
+```javascript
+const token = jwt.sign(
+  payload,
+  process.env.JWT_SECRET,
+  { 
+    expiresIn: '24h'  // Options: '15m', '1h', '7d', '30d'
+  }
+);
+```
+
+### Recommended Expiration Times
+
+| Use Case | Expiration | Reason |
+|----------|------------|--------|
+| Web App | 1-24 hours | Balance between security and UX |
+| Mobile App | 7-30 days | Less frequent logins acceptable |
+| API Keys | No expiration | Use refresh tokens instead |
+| High Security | 15-60 minutes | Minimal exposure window |
+
+## Error Handling
+
+Common JWT errors and how to handle them:
+
+```javascript
+try {
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+} catch (error) {
+  switch(error.name) {
+    case 'TokenExpiredError':
+      // Token has expired - user needs to login again
+      return res.status(401).json({ 
+        error: "Token expired",
+        code: "TOKEN_EXPIRED"
+      });
+      
+    case 'JsonWebTokenError':
+      // Token is malformed or invalid
+      return res.status(403).json({ 
+        error: "Invalid token",
+        code: "INVALID_TOKEN"
+      });
+      
+    case 'NotBeforeError':
+      // Token not active yet (nbf claim)
+      return res.status(403).json({ 
+        error: "Token not active yet",
+        code: "TOKEN_NOT_ACTIVE"
+      });
+      
+    default:
+      return res.status(403).json({ 
+        error: "Token verification failed",
+        code: "VERIFICATION_FAILED"
+      });
+  }
+}
+```
+
+## Security Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use HTTPS" icon="lock">
+    Always transmit JWT tokens over HTTPS in production to prevent interception.
+  </Card>
+  
+  <Card title="Short Expiration" icon="clock">
+    Use short-lived tokens (1-24 hours) to minimize the impact of token theft.
+  </Card>
+  
+  <Card title="Secure Storage" icon="shield">
+    Store tokens securely on the client (httpOnly cookies or secure storage, not localStorage).
+  </Card>
+  
+  <Card title="Strong Secret" icon="key">
+    Use a cryptographically secure JWT_SECRET (at least 256 bits).
+  </Card>
+</CardGroup>
+
+<Warning>
+  **Common Security Mistakes to Avoid:**
+  
+  - Storing sensitive data in the JWT payload (it's base64 encoded, not encrypted)
+  - Using weak or default JWT_SECRET values
+  - Not validating tokens on every protected request
+  - Storing tokens in localStorage (vulnerable to XSS attacks)
+  - Not implementing token expiration
+</Warning>
+
+## Testing JWT Implementation
+
+Test your authentication flow:
+
+```javascript
+// test-auth.js
+const axios = require('axios');
+
+const BASE_URL = 'http://localhost:3000';
+
+async function testAuth() {
+  try {
+    // 1. Register user
+    console.log('1. Registering user...');
+    const registerRes = await axios.post(`${BASE_URL}/usuarios`, {
+      email: 'test@example.com',
+      password: 'TestPass123!'
+    });
+    console.log('✓ User registered:', registerRes.data);
+    
+    // 2. Login
+    console.log('\n2. Logging in...');
+    const loginRes = await axios.post(`${BASE_URL}/login`, {
+      email: 'test@example.com',
+      password: 'TestPass123!'
+    });
+    console.log('✓ Login successful');
+    console.log('Token:', loginRes.data.token.substring(0, 50) + '...');
+    
+    const token = loginRes.data.token;
+    
+    // 3. Access protected route
+    console.log('\n3. Accessing protected route...');
+    const meRes = await axios.get(`${BASE_URL}/me`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    console.log('✓ Protected route accessed:', meRes.data);
+    
+    // 4. Try with invalid token
+    console.log('\n4. Testing with invalid token...');
+    try {
+      await axios.get(`${BASE_URL}/me`, {
+        headers: { Authorization: 'Bearer invalid_token' }
+      });
+    } catch (error) {
+      console.log('✓ Invalid token rejected:', error.response.data);
+    }
+    
+  } catch (error) {
+    console.error('✗ Error:', error.response?.data || error.message);
+  }
+}
+
+testAuth();
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication Overview" icon="book" href="/authentication/overview">
+    Review the complete authentication architecture
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api-reference/introduction">
+    Explore all authentication endpoints
+  </Card>
+  
+  <Card title="Database Schema" icon="database" href="/database/schema">
+    Learn about the database structure
+  </Card>
+  
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get started with App CR in minutes
+  </Card>
+</CardGroup>

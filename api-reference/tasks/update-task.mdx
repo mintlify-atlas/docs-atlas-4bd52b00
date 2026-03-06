@@ -1,0 +1,138 @@
+---
+title: 'Update Task'
+api: 'PUT /tasks/:id'
+description: 'Update an existing task'
+---
+
+<Note>
+  This endpoint requires implementation in the backend. Documentation reflects the expected API design based on the Task model schema.
+</Note>
+
+## Authentication
+
+This endpoint requires a valid JWT token in the Authorization header.
+
+```
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+## Path Parameters
+
+<ParamField path="id" type="integer" required>
+  The unique identifier of the task to update
+</ParamField>
+
+## Request Body
+
+All fields are optional. Only provide the fields you want to update.
+
+<ParamField body="title" type="string">
+  The new title of the task
+</ParamField>
+
+<ParamField body="description" type="string">
+  The new description of the task
+</ParamField>
+
+<ParamField body="completed" type="boolean">
+  Update the completion status of the task
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="integer">
+  The unique identifier for the task
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  The updated title of the task
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  The updated description of the task
+</ResponseField>
+
+<ResponseField name="completed" type="boolean">
+  The updated completion status
+</ResponseField>
+
+<ResponseField name="userId" type="integer">
+  The ID of the user who owns this task
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL - Update Title
+curl -X PUT http://localhost:3000/tasks/1 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "title": "Updated API documentation"
+  }'
+```
+
+```bash cURL - Mark as Completed
+curl -X PUT http://localhost:3000/tasks/1 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "completed": true
+  }'
+```
+
+```bash cURL - Update Multiple Fields
+curl -X PUT http://localhost:3000/tasks/1 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "title": "Finalized API documentation",
+    "description": "All endpoints documented and reviewed",
+    "completed": true
+  }'
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+{
+  "id": 1,
+  "title": "Finalized API documentation",
+  "description": "All endpoints documented and reviewed",
+  "completed": true,
+  "userId": 5
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "No fields provided to update"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "Invalid or missing authentication token"
+}
+```
+
+```json 403 Forbidden
+{
+  "error": "You do not have permission to update this task"
+}
+```
+
+```json 404 Not Found
+{
+  "error": "Task not found"
+}
+```
+
+```json 500 Internal Server Error
+{
+  "error": "Error updating task"
+}
+```
+
+</ResponseExample>

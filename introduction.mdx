@@ -1,0 +1,97 @@
+---
+title: Introduction
+description: Welcome to App CR - A RESTful API service for task management with user authentication
+---
+
+## What is App CR?
+
+App CR is a lightweight RESTful API service built for task management with user authentication. It provides a backend solution for creating and managing tasks with user accounts, making it perfect for building todo applications, project management tools, or any application requiring task tracking functionality.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="User Management" icon="users">
+    Create and manage user accounts with secure authentication
+  </Card>
+  <Card title="Task Management" icon="list-check">
+    Full CRUD operations for tasks with user-specific task lists
+  </Card>
+  <Card title="Database Integration" icon="database">
+    PostgreSQL database with Prisma ORM for type-safe queries
+  </Card>
+  <Card title="RESTful API" icon="code">
+    Clean REST endpoints built with Express.js
+  </Card>
+</CardGroup>
+
+## Tech Stack
+
+App CR is built with modern, reliable technologies:
+
+- **Express.js** - Fast and minimalist web framework for Node.js
+- **Prisma ORM** - Next-generation ORM for type-safe database access
+- **PostgreSQL** - Robust relational database
+- **JWT (JSON Web Tokens)** - Secure authentication mechanism
+- **bcryptjs** - Password hashing for secure credential storage
+- **CORS** - Cross-origin resource sharing enabled for frontend integration
+
+## Architecture
+
+The application follows a straightforward architecture:
+
+```
+┌─────────────┐
+│   Client    │
+│ (Frontend)  │
+└──────┬──────┘
+       │ HTTP Requests
+       ↓
+┌─────────────┐
+│  Express.js │
+│   Server    │
+└──────┬──────┘
+       │ Prisma Client
+       ↓
+┌─────────────┐
+│ PostgreSQL  │
+│  Database   │
+└─────────────┘
+```
+
+## Data Models
+
+App CR uses two primary data models:
+
+### User Model
+- `id` - Unique identifier (auto-increment)
+- `email` - Unique email address
+- `password` - Hashed password
+- `tasks` - Relation to user's tasks
+
+### Task Model
+- `id` - Unique identifier (auto-increment)
+- `title` - Task title
+- `description` - Optional task description
+- `completed` - Boolean completion status
+- `userId` - Foreign key to user
+- `author` - Relation to task owner
+
+## Use Cases
+
+App CR is ideal for:
+
+- **Todo Applications** - Build personal or team task management apps
+- **Project Management** - Track tasks and assignments across projects
+- **Learning Projects** - Understand REST API design and authentication patterns
+- **Backend Starter** - Use as a foundation for larger applications
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get App CR running in 5 minutes
+  </Card>
+  <Card title="Installation" icon="download" href="/installation">
+    Detailed setup and configuration guide
+  </Card>
+</CardGroup>

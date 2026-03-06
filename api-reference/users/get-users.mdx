@@ -1,0 +1,93 @@
+---
+title: 'Get Users'
+api: 'GET /usuarios'
+description: 'Retrieve user information (endpoint not yet implemented)'
+---
+
+<Warning>
+  This endpoint is not currently implemented in the backend code. This page serves as a placeholder for future implementation.
+</Warning>
+
+## Endpoint
+
+```
+GET /usuarios
+```
+
+## Status
+
+**Not Implemented** - This endpoint needs to be added to `/backend/index.js`
+
+## Proposed Functionality
+
+When implemented, this endpoint should:
+
+- Retrieve a list of all users from the database
+- Support optional query parameters for filtering and pagination
+- Return user data without sensitive information (passwords should be excluded)
+
+## Suggested Implementation
+
+```javascript
+app.get('/usuarios', async (req, res) => {
+  try {
+    const usuarios = await prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        createdAt: true
+        // Exclude password from response
+      }
+    });
+    res.status(200).json(usuarios);
+  } catch (error) {
+    console.log("DETALLE DEL ERROR:", error);
+    res.status(500).json({ error: "Error al obtener usuarios" });
+  }
+});
+```
+
+## Proposed Response Format
+
+### Success (200)
+
+```json
+[
+  {
+    "id": 1,
+    "email": "user1@example.com",
+    "createdAt": "2026-03-06T10:30:00.000Z"
+  },
+  {
+    "id": 2,
+    "email": "user2@example.com",
+    "createdAt": "2026-03-06T11:45:00.000Z"
+  }
+]
+```
+
+### Error (500)
+
+```json
+{
+  "error": "Error al obtener usuarios"
+}
+```
+
+## Example Request
+
+```bash
+curl -X GET http://localhost:3000/usuarios \
+  -H "Content-Type: application/json"
+```
+
+## Next Steps
+
+To implement this endpoint:
+
+1. Add the GET route handler to `/backend/index.js`
+2. Use Prisma's `findMany()` method to query users
+3. Exclude sensitive fields like passwords using `select`
+4. Consider adding pagination with `skip` and `take` parameters
+5. Add filtering capabilities (e.g., search by email)
+6. Implement proper authentication/authorization

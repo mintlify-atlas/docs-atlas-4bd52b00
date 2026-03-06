@@ -1,0 +1,375 @@
+---
+title: 'Database Migrations'
+description: 'How to run and manage Prisma migrations for App CR'
+icon: 'arrows-rotate'
+---
+
+## Overview
+
+Prisma Migrate is a declarative migration system that helps you keep your database schema in sync with your Prisma schema. It generates SQL migration files and applies them to your database.
+
+## Initial Migration
+
+The initial migration (`20260218000116_init`) creates the foundational database structure for App CR.
+
+### Migration Contents
+
+<CodeGroup>
+
+```sql Create User Table
+CREATE TABLE "User" (
+    "id" SERIAL NOT NULL,
+    "email" TEXT NOT NULL,
+    "password" TEXT NOT NULL,
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+```
+
+```sql Create Task Table
+CREATE TABLE "Task" (
+    "id" SERIAL NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "completed" BOOLEAN NOT NULL DEFAULT false,
+    "userId" INTEGER NOT NULL,
+    CONSTRAINT "Task_pkey" PRIMARY KEY ("id")
+);
+```
+
+```sql Add Foreign Key
+ALTER TABLE "Task" ADD CONSTRAINT "Task_userId_fkey" 
+  FOREIGN KEY ("userId") REFERENCES "User"("id") 
+  ON DELETE RESTRICT ON UPDATE CASCADE;
+```
+
+</CodeGroup>
+
+### What Gets Created
+
+<Steps>
+  <Step title="User Table">
+    - Primary key `id` with auto-increment (SERIAL)
+    - Unique email field with index
+    - Password field for authentication
+  </Step>
+  
+  <Step title="Task Table">
+    - Primary key `id` with auto-increment (SERIAL)
+    - Required `title` field
+    - Optional `description` field
+    - Boolean `completed` field (defaults to false)
+    - Foreign key `userId` linking to User table
+  </Step>
+  
+  <Step title="Constraints & Indexes">
+    - Primary key constraints on both tables
+    - Unique index on User.email
+    - Foreign key constraint from Task to User
+  </Step>
+</Steps>
+
+---
+
+## Running Migrations
+
+### Development Workflow
+
+<Steps>
+  <Step title="Apply Existing Migrations">
+    Run all pending migrations against your database:
+    
+    ```bash
+    cd ~/workspace/source/backend
+    npx prisma migrate deploy
+    ```
+    
+    <Note>
+      Use `migrate deploy` in production environments. It applies migrations without prompting.
+    </Note>
+  </Step>
+  
+  <Step title="Development Migration">
+    For development with schema changes:
+    
+    ```bash
+    npx prisma migrate dev
+    ```
+    
+    This command:
+    - Creates new migration files for schema changes
+    - Applies migrations to the database
+    - Generates Prisma Client
+    - Prompts for migration name
+  </Step>
+  
+  <Step title="Verify Migration">
+    Check migration status:
+    
+    ```bash
+    npx prisma migrate status
+    ```
+    
+    View applied migrations in database:
+    
+    ```bash
+    npx prisma migrate resolve --applied "migration_name"
+    ```
+  </Step>
+</Steps>
+
+### Common Migration Commands
+
+<CodeGroup>
+
+```bash Apply All Migrations
+# Production-safe: applies all pending migrations
+npx prisma migrate deploy
+```
+
+```bash Development Migration
+# Dev mode: create and apply migration
+npx prisma migrate dev --name add_new_field
+```
+
+```bash Check Status
+# View migration status
+npx prisma migrate status
+```
+
+```bash Reset Database
+# ⚠️ Drops database and reapplies all migrations
+npx prisma migrate reset
+```
+
+```bash Generate Client Only
+# Update Prisma Client without running migrations
+npx prisma generate
+```
+
+</CodeGroup>
+
+---
+
+## Creating New Migrations
+
+When you modify the Prisma schema, create a new migration:
+
+<Steps>
+  <Step title="Modify Schema">
+    Edit `backend/prisma/schema.prisma` with your changes:
+    
+    ```prisma
+    model Task {
+      id          Int      @id @default(autoincrement())
+      title       String
+      description String?
+      completed   Boolean  @default(false)
+      priority    String   @default("medium") // New field
+      userId      Int
+      author      User     @relation(fields: [userId], references: [id])
+    }
+    ```
+  </Step>
+  
+  <Step title="Create Migration">
+    Generate migration from schema changes:
+    
+    ```bash
+    npx prisma migrate dev --name add_task_priority
+    ```
+    
+    This creates:
+    - `migrations/20260306XXXXXX_add_task_priority/migration.sql`
+    - Updates Prisma Client types
+  </Step>
+  
+  <Step title="Review Migration SQL">
+    Check the generated SQL before applying:
+    
+    ```bash
+    cat prisma/migrations/20260306XXXXXX_add_task_priority/migration.sql
+    ```
+  </Step>
+  
+  <Step title="Commit Migration">
+    Add migration files to version control:
+    
+    ```bash
+    git add prisma/migrations/
+    git commit -m "Add priority field to Task model"
+    ```
+  </Step>
+</Steps>
+
+---
+
+## Migration Files
+
+### Directory Structure
+
+```
+backend/prisma/
+├── schema.prisma
+└── migrations/
+    ├── 20260218000116_init/
+    │   └── migration.sql
+    ├── migration_lock.toml
+    └── [future_migrations]/
+```
+
+### Migration Lock File
+
+```toml
+# migration_lock.toml
+provider = "postgresql"
+```
+
+<Warning>
+  Never modify migration files directly. Always create new migrations for schema changes.
+</Warning>
+
+---
+
+## Production Migrations
+
+### Deployment Process
+
+<Steps>
+  <Step title="Test Locally">
+    Always test migrations in development first:
+    
+    ```bash
+    npx prisma migrate dev
+    ```
+  </Step>
+  
+  <Step title="Deploy to Production">
+    Apply migrations in production:
+    
+    ```bash
+    npx prisma migrate deploy
+    ```
+    
+    <Note>
+      `migrate deploy` does not prompt or generate new migrations. It only applies existing ones.
+    </Note>
+  </Step>
+  
+  <Step title="Verify Deployment">
+    Check migration status:
+    
+    ```bash
+    npx prisma migrate status
+    ```
+    
+    Expected output:
+    ```
+    Database schema is up to date!
+    ```
+  </Step>
+</Steps>
+
+### CI/CD Integration
+
+```yaml
+# Example GitHub Actions workflow
+- name: Run Migrations
+  run: |
+    cd backend
+    npx prisma migrate deploy
+  env:
+    DATABASE_URL: ${{ secrets.DATABASE_URL }}
+```
+
+---
+
+## Troubleshooting
+
+### Reset Development Database
+
+If your development database is in an inconsistent state:
+
+```bash
+npx prisma migrate reset
+```
+
+<Warning>
+  This command drops the database, recreates it, and applies all migrations. **All data will be lost.**
+</Warning>
+
+### Resolve Failed Migration
+
+If a migration fails partway through:
+
+<CodeGroup>
+
+```bash Mark as Applied
+# If migration was applied but not recorded
+npx prisma migrate resolve --applied "20260218000116_init"
+```
+
+```bash Mark as Rolled Back
+# If migration failed and needs to be retried
+npx prisma migrate resolve --rolled-back "20260218000116_init"
+```
+
+</CodeGroup>
+
+### Schema Drift Detection
+
+Check if database schema differs from migration history:
+
+```bash
+npx prisma migrate diff \
+  --from-schema-datamodel prisma/schema.prisma \
+  --to-schema-datasource prisma/schema.prisma
+```
+
+---
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always review generated SQL" icon="file-code">
+    Before applying migrations, review the SQL to ensure it matches your intentions:
+    ```bash
+    cat prisma/migrations/[timestamp]_[name]/migration.sql
+    ```
+  </Accordion>
+  
+  <Accordion title="Use descriptive migration names" icon="tag">
+    Good: `npx prisma migrate dev --name add_task_priority`
+    
+    Bad: `npx prisma migrate dev --name update`
+  </Accordion>
+  
+  <Accordion title="Never edit migration files" icon="ban">
+    Once a migration is committed and shared, never modify it. Create a new migration instead.
+  </Accordion>
+  
+  <Accordion title="Test migrations in development" icon="flask">
+    Always run and test migrations locally before deploying to production.
+  </Accordion>
+  
+  <Accordion title="Backup before major migrations" icon="database">
+    Create database backups before applying migrations in production:
+    ```bash
+    pg_dump -U user_admin mi_db_crud > backup.sql
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Database Schema" icon="database" href="/database/schema">
+    View complete schema documentation
+  </Card>
+  <Card title="Database Setup" icon="wrench" href="/database/setup">
+    Configure database connection
+  </Card>
+</CardGroup>

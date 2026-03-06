@@ -1,0 +1,160 @@
+---
+title: 'Authentication Overview'
+description: 'Learn how authentication works in App CR using JWT tokens and bcrypt password hashing'
+---
+
+## How Authentication Works
+
+App CR uses a **JWT (JSON Web Token)** based authentication system to secure API endpoints and manage user sessions. The authentication flow combines industry-standard practices including:
+
+- **bcryptjs** for secure password hashing
+- **jsonwebtoken** for token generation and verification
+- **JWT_SECRET** environment variable for token signing
+
+## Authentication Flow
+
+<Steps>
+  <Step title="User Registration">
+    Users register by providing an email and password. The password is hashed using bcryptjs before being stored in the PostgreSQL database.
+    
+    ```javascript
+    const hashedPassword = await bcrypt.hash(password, 10);
+    ```
+  </Step>
+  
+  <Step title="Token Generation">
+    Upon successful login, the server generates a JWT token signed with the `JWT_SECRET` environment variable.
+    
+    ```javascript
+    const token = jwt.sign(
+      { userId: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+    ```
+  </Step>
+  
+  <Step title="Token Usage">
+    Clients include the JWT token in the `Authorization` header for authenticated requests:
+    
+    ```bash
+    Authorization: Bearer <your-jwt-token>
+    ```
+  </Step>
+  
+  <Step title="Token Verification">
+    Protected endpoints verify the token before processing requests:
+    
+    ```javascript
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    ```
+  </Step>
+</Steps>
+
+## Technology Stack
+
+App CR's authentication system is built with the following dependencies:
+
+| Package | Version | Purpose |
+|---------|---------|----------|
+| `jsonwebtoken` | ^9.0.3 | JWT token creation and validation |
+| `bcryptjs` | ^3.0.3 | Password hashing and comparison |
+| `express` | ^5.2.1 | HTTP server framework |
+| `@prisma/client` | ^6.19.2 | Database ORM for user management |
+
+## Security Features
+
+<CardGroup cols={2}>
+  <Card title="Password Hashing" icon="lock">
+    All passwords are hashed using bcryptjs with a salt factor of 10 before storage. Passwords are never stored in plain text.
+  </Card>
+  
+  <Card title="JWT Tokens" icon="key">
+    Stateless authentication using signed JWT tokens. Tokens include user identity and expiration time.
+  </Card>
+  
+  <Card title="Environment Variables" icon="shield">
+    Sensitive configuration like `JWT_SECRET` is stored in environment variables, never in source code.
+  </Card>
+  
+  <Card title="Database Security" icon="database">
+    Email uniqueness enforced at the database level using Prisma schema constraints.
+  </Card>
+</CardGroup>
+
+## User Model
+
+The User model in App CR is defined in the Prisma schema:
+
+```prisma
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  tasks     Task[]
+}
+```
+
+**Key Points:**
+- `email` is unique and serves as the username
+- `password` stores the bcrypt hash (never plain text)
+- Each user can have multiple tasks (one-to-many relationship)
+
+<Note>
+  The `@unique` constraint on email ensures no duplicate accounts can be created with the same email address.
+</Note>
+
+## Environment Configuration
+
+Authentication requires the following environment variable:
+
+```bash
+JWT_SECRET=your-secret-key-here
+```
+
+<Warning>
+  **Never commit your JWT_SECRET to version control!** Use a strong, randomly generated secret in production. You can generate one using:
+  
+  ```bash
+  node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+  ```
+</Warning>
+
+## Quick Example
+
+Here's a complete authentication flow example:
+
+<CodeGroup>
+```bash Registration
+curl -X POST http://localhost:3000/usuarios \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "securePassword123"
+  }'
+```
+
+```json Response
+{
+  "id": 1,
+  "email": "user@example.com",
+  "password": "$2a$10$...(hashed)"
+}
+```
+</CodeGroup>
+
+<Note>
+  Currently, the `/usuarios` endpoint stores passwords as plain text in the implementation. See the [JWT Tokens guide](/authentication/jwt-tokens) for the recommended secure implementation with password hashing.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="JWT Implementation" icon="code" href="/authentication/jwt-tokens">
+    Learn how to implement JWT token generation and validation
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="/api-reference/introduction">
+    Explore all available authentication endpoints
+  </Card>
+</CardGroup>

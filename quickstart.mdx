@@ -1,80 +1,240 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get App CR running locally and make your first API call in 5 minutes
 ---
 
-## Get started in three steps
+## Prerequisites
 
-Get your documentation site running locally and make your first customization.
+Before you begin, ensure you have:
 
-### Step 1: Set up your local environment
+- Node.js (v14 or higher)
+- Docker and Docker Compose
+- Git
+- A text editor or IDE
+- curl or Postman for testing
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+## Setup Steps
 
-### Step 2: Deploy your changes
+<Steps>
+  <Step title="Clone the Repository">
+    Clone the App CR repository to your local machine:
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    ```bash
+    git clone <your-repository-url>
+    cd app-cr
+    ```
+  </Step>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+  <Step title="Start PostgreSQL with Docker">
+    Launch the PostgreSQL database using Docker Compose:
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    ```bash
+    docker-compose up -d
+    ```
 
-### Step 3: Go live
+    This will start a PostgreSQL container with the following configuration:
+    - **User**: `user_admin`
+    - **Password**: `password123`
+    - **Database**: `mi_db_crud`
+    - **Port**: `5432`
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    <Note>
+      The `-d` flag runs the container in detached mode (background).
+    </Note>
+  </Step>
 
-## Next steps
+  <Step title="Configure Environment Variables">
+    Create a `.env` file in the `backend` directory:
 
-Now that you have your docs running, explore these key features:
+    ```bash
+    cd backend
+    touch .env
+    ```
+
+    Add the following environment variables:
+
+    ```bash
+    DATABASE_URL="postgresql://user_admin:password123@localhost:5432/mi_db_crud"
+    JWT_SECRET="your-secret-key-here"
+    PORT=3000
+    ```
+
+    <Warning>
+      Replace `your-secret-key-here` with a strong, random secret key for production use.
+    </Warning>
+  </Step>
+
+  <Step title="Install Dependencies">
+    Install all required npm packages:
+
+    ```bash
+    npm install
+    ```
+
+    This installs:
+    - Express.js for the web server
+    - Prisma for database ORM
+    - bcryptjs for password hashing
+    - jsonwebtoken for JWT authentication
+    - Other essential dependencies
+  </Step>
+
+  <Step title="Initialize the Database">
+    Generate Prisma client and run migrations:
+
+    ```bash
+    npx prisma generate
+    npx prisma migrate dev --name init
+    ```
+
+    This creates the database tables based on your schema:
+    - `User` table
+    - `Task` table
+  </Step>
+
+  <Step title="Start the Server">
+    Launch the Express.js server:
+
+    ```bash
+    node index.js
+    ```
+
+    You should see:
+    ```
+    Servidor corriendo en: http://localhost:3000
+    ```
+
+    <Note>
+      The server runs on port 3000 by default. You can change this in your `.env` file.
+    </Note>
+  </Step>
+</Steps>
+
+## Make Your First API Call
+
+Now that your server is running, let's create a user!
+
+<CodeGroup>
+```bash curl
+curl -X POST http://localhost:3000/usuarios \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "mypassword123"
+  }'
+```
+
+```javascript fetch
+fetch('http://localhost:3000/usuarios', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    email: 'user@example.com',
+    password: 'mypassword123'
+  })
+})
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+
+```python requests
+import requests
+
+response = requests.post(
+    'http://localhost:3000/usuarios',
+    json={
+        'email': 'user@example.com',
+        'password': 'mypassword123'
+    }
+)
+
+print(response.json())
+```
+</CodeGroup>
+
+### Expected Response
+
+If successful, you'll receive a `201 Created` response with the user data:
+
+```json
+{
+  "id": 1,
+  "email": "user@example.com",
+  "password": "mypassword123"
+}
+```
+
+<Warning>
+  The current implementation stores passwords in plain text. For production use, you should implement password hashing with bcryptjs before storing user credentials.
+</Warning>
+
+## Verify Your Setup
+
+Check that everything is working:
+
+<Steps>
+  <Step title="Database Connection">
+    Verify PostgreSQL is running:
+    ```bash
+    docker ps
+    ```
+    You should see a container with the `postgres:15` image.
+  </Step>
+
+  <Step title="Server Status">
+    Check that the Express server is responding:
+    ```bash
+    curl http://localhost:3000/usuarios
+    ```
+  </Step>
+
+  <Step title="Prisma Studio (Optional)">
+    Open Prisma Studio to view your database visually:
+    ```bash
+    npx prisma studio
+    ```
+    This opens a browser interface at `http://localhost:5555`.
+  </Step>
+</Steps>
+
+## Next Steps
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Installation Guide" icon="gear" href="/installation">
+    Detailed setup and configuration options
+  </Card>
+  <Card title="API Reference" icon="book" href="/api-reference/users/create-user">
+    Complete API endpoint documentation
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Port 5432 already in use">
+    If you have another PostgreSQL instance running, either stop it or change the port in `docker-compose.yml`:
+    ```yaml
+    ports:
+      - "5433:5432"
+    ```
+    Don't forget to update your `DATABASE_URL` accordingly.
+  </Accordion>
+
+  <Accordion title="Prisma migration errors">
+    If migrations fail, reset the database:
+    ```bash
+    npx prisma migrate reset
+    npx prisma migrate dev --name init
+    ```
+  </Accordion>
+
+  <Accordion title="Cannot connect to database">
+    Ensure Docker is running and the PostgreSQL container is up:
+    ```bash
+    docker-compose ps
+    docker-compose logs postgres
+    ```
+  </Accordion>
+</AccordionGroup>

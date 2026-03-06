@@ -1,0 +1,112 @@
+---
+title: 'Create User'
+api: 'POST /usuarios'
+description: 'Create a new user in the system with email and password'
+---
+
+This endpoint creates a new user account in the PostgreSQL database using Prisma ORM. The user data is stored with the provided email and password.
+
+## Endpoint
+
+```
+POST /usuarios
+```
+
+## Request Body
+
+<ParamField body="email" type="string" required>
+  The user's email address. Must be unique in the database.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  The user's password. This will be stored as provided (note: password hashing should be implemented for security).
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="integer">
+  The unique identifier assigned to the newly created user
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  The email address of the created user
+</ResponseField>
+
+<ResponseField name="password" type="string">
+  The password as stored in the database
+</ResponseField>
+
+<ResponseField name="createdAt" type="datetime">
+  Timestamp when the user was created (if defined in schema)
+</ResponseField>
+
+## Status Codes
+
+- **201 Created** - User successfully created
+- **500 Internal Server Error** - Database error or validation failure
+
+## Example Request
+
+```bash
+curl -X POST http://localhost:3000/usuarios \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "securePassword123"
+  }'
+```
+
+## Example Response
+
+### Success (201)
+
+```json
+{
+  "id": 1,
+  "email": "user@example.com",
+  "password": "securePassword123",
+  "createdAt": "2026-03-06T10:30:00.000Z"
+}
+```
+
+### Error (500)
+
+```json
+{
+  "error": "Error al insertar en Postgres"
+}
+```
+
+## Error Handling
+
+Common errors include:
+- **Duplicate email**: If the email already exists in the database
+- **Missing required fields**: If email or password is not provided
+- **Database connection issues**: If the PostgreSQL database is unavailable
+
+## Implementation Details
+
+The endpoint implementation (from `/backend/index.js:24-36`):
+
+```javascript
+app.post('/usuarios', async (req, res) => {
+  try {
+    const nuevoUsuario = await prisma.user.create({
+      data: {
+        email: req.body.email,
+        password: req.body.password
+      }
+    });
+    res.status(201).json(nuevoUsuario);
+  } catch (error) {
+    console.log("DETALLE DEL ERROR:", error);
+    res.status(500).json({ error: "Error al insertar en Postgres" });
+  }
+});
+```
+
+## Security Considerations
+
+<Warning>
+  The current implementation stores passwords in plain text. For production use, implement password hashing using bcryptjs (already imported in the project).
+</Warning>

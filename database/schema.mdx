@@ -1,0 +1,259 @@
+---
+title: 'Database Schema'
+description: 'Complete database schema documentation with models, fields, and relationships'
+icon: 'database'
+---
+
+## Overview
+
+App CR uses Prisma ORM with PostgreSQL 15 as the database. The schema defines two core models: **User** and **Task**, with a one-to-many relationship.
+
+## Schema Configuration
+
+```prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+```
+
+<ParamField path="generator.provider" type="string" default="prisma-client-js">
+  Generates the Prisma Client for JavaScript/TypeScript applications
+</ParamField>
+
+<ParamField path="datasource.provider" type="string" default="postgresql">
+  Database provider (PostgreSQL 15)
+</ParamField>
+
+<ParamField path="datasource.url" type="string" required>
+  Database connection URL from `DATABASE_URL` environment variable
+</ParamField>
+
+---
+
+## User Model
+
+The User model represents application users who can create and manage tasks.
+
+```prisma
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  tasks     Task[]
+}
+```
+
+### Fields
+
+<ResponseField name="id" type="Int" required>
+  Primary key with auto-increment
+  
+  **Attributes:**
+  - `@id` - Primary key constraint
+  - `@default(autoincrement())` - Auto-generated sequential ID
+</ResponseField>
+
+<ResponseField name="email" type="String" required>
+  User's email address (unique across all users)
+  
+  **Attributes:**
+  - `@unique` - Unique constraint enforced at database level
+  
+  **Validation:** Must be a valid email format
+</ResponseField>
+
+<ResponseField name="password" type="String" required>
+  Hashed password for user authentication
+  
+  **Security:** Store only bcrypt/argon2 hashed passwords, never plaintext
+</ResponseField>
+
+<ResponseField name="tasks" type="Task[]">
+  One-to-many relationship with Task model
+  
+  **Relation:** A user can have multiple tasks
+</ResponseField>
+
+### Database Table
+
+```sql
+CREATE TABLE "User" (
+    "id" SERIAL NOT NULL,
+    "email" TEXT NOT NULL,
+    "password" TEXT NOT NULL,
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+```
+
+---
+
+## Task Model
+
+The Task model represents todo items created by users.
+
+```prisma
+model Task {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  completed   Boolean  @default(false)
+  userId      Int
+  author      User     @relation(fields: [userId], references: [id])
+}
+```
+
+### Fields
+
+<ResponseField name="id" type="Int" required>
+  Primary key with auto-increment
+  
+  **Attributes:**
+  - `@id` - Primary key constraint
+  - `@default(autoincrement())` - Auto-generated sequential ID
+</ResponseField>
+
+<ResponseField name="title" type="String" required>
+  Task title or summary
+  
+  **Validation:** Required field, cannot be null or empty
+</ResponseField>
+
+<ResponseField name="description" type="String?">
+  Optional detailed description of the task
+  
+  **Nullable:** Can be null/undefined
+</ResponseField>
+
+<ResponseField name="completed" type="Boolean" required>
+  Task completion status
+  
+  **Attributes:**
+  - `@default(false)` - New tasks are incomplete by default
+  
+  **Values:** `true` (completed) or `false` (pending)
+</ResponseField>
+
+<ResponseField name="userId" type="Int" required>
+  Foreign key referencing the User who created this task
+  
+  **Relation:** Links to `User.id`
+</ResponseField>
+
+<ResponseField name="author" type="User" required>
+  Many-to-one relationship with User model
+  
+  **Attributes:**
+  - `@relation(fields: [userId], references: [id])` - Foreign key relationship
+  
+  **Behavior:**
+  - `ON DELETE RESTRICT` - Cannot delete user if they have tasks
+  - `ON UPDATE CASCADE` - Updates propagate to tasks
+</ResponseField>
+
+### Database Table
+
+```sql
+CREATE TABLE "Task" (
+    "id" SERIAL NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "completed" BOOLEAN NOT NULL DEFAULT false,
+    "userId" INTEGER NOT NULL,
+    CONSTRAINT "Task_pkey" PRIMARY KEY ("id")
+);
+
+ALTER TABLE "Task" ADD CONSTRAINT "Task_userId_fkey" 
+  FOREIGN KEY ("userId") REFERENCES "User"("id") 
+  ON DELETE RESTRICT ON UPDATE CASCADE;
+```
+
+---
+
+## Relationships
+
+### User ↔ Task (One-to-Many)
+
+<Steps>
+  <Step title="User has many Tasks">
+    Each user can create multiple tasks through the `tasks` relation field
+    
+    ```typescript
+    const userWithTasks = await prisma.user.findUnique({
+      where: { id: 1 },
+      include: { tasks: true }
+    });
+    ```
+  </Step>
+  
+  <Step title="Task belongs to User">
+    Each task belongs to exactly one user through the `author` relation and `userId` foreign key
+    
+    ```typescript
+    const taskWithAuthor = await prisma.task.findUnique({
+      where: { id: 1 },
+      include: { author: true }
+    });
+    ```
+  </Step>
+  
+  <Step title="Referential Integrity">
+    Foreign key constraint ensures data integrity:
+    - Cannot create task with non-existent userId
+    - Cannot delete user who has tasks (RESTRICT)
+    - Updating user.id cascades to task.userId (CASCADE)
+  </Step>
+</Steps>
+
+---
+
+## Schema File Location
+
+```bash
+~/workspace/source/backend/prisma/schema.prisma
+```
+
+## Working with the Schema
+
+<CodeGroup>
+
+```bash Generate Client
+npx prisma generate
+```
+
+```bash Format Schema
+npx prisma format
+```
+
+```bash Validate Schema
+npx prisma validate
+```
+
+```bash View in Studio
+npx prisma studio
+```
+
+</CodeGroup>
+
+<Note>
+  After modifying the schema, always run `prisma generate` to update the Prisma Client types.
+</Note>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Run Migrations" icon="arrows-rotate" href="/database/migrations">
+    Learn how to apply schema changes to your database
+  </Card>
+  <Card title="Database Setup" icon="wrench" href="/database/setup">
+    Configure database connection and environment
+  </Card>
+</CardGroup>

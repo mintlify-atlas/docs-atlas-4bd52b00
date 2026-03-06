@@ -1,0 +1,498 @@
+---
+title: Installation
+description: Detailed installation and configuration guide for App CR
+---
+
+## System Requirements
+
+Before installing App CR, ensure your system meets these requirements:
+
+<CardGroup cols={2}>
+  <Card title="Node.js" icon="node">
+    Version 14.x or higher
+  </Card>
+  <Card title="Docker" icon="docker">
+    Docker Engine 20.x+ and Docker Compose
+  </Card>
+  <Card title="PostgreSQL" icon="database">
+    Version 15 (via Docker) or existing instance
+  </Card>
+  <Card title="Git" icon="git">
+    For cloning the repository
+  </Card>
+</CardGroup>
+
+## Installation Methods
+
+<Tabs>
+  <Tab title="Docker (Recommended)">
+    Use Docker for the easiest setup with isolated database.
+
+    ### Step 1: Clone the Repository
+    ```bash
+    git clone <your-repository-url>
+    cd app-cr
+    ```
+
+    ### Step 2: Review Docker Configuration
+    The included `docker-compose.yml` configures PostgreSQL:
+
+    ```yaml
+    version: '3.8'
+
+    services:
+      postgres:
+        image: postgres:15
+        restart: always
+        environment:
+          POSTGRES_USER: user_admin
+          POSTGRES_PASSWORD: password123
+          POSTGRES_DB: mi_db_crud
+        ports:
+          - "5432:5432"
+        volumes:
+          - postgres_data:/var/lib/postgresql/data
+
+    volumes:
+      postgres_data:
+    ```
+
+    <Note>
+      The volume `postgres_data` persists your database data between container restarts.
+    </Note>
+
+    ### Step 3: Start PostgreSQL
+    ```bash
+    docker-compose up -d
+    ```
+
+    Verify the container is running:
+    ```bash
+    docker ps
+    ```
+
+    ### Step 4: Configure Backend
+    Navigate to the backend directory:
+    ```bash
+    cd backend
+    ```
+
+    Create a `.env` file:
+    ```bash
+    DATABASE_URL="postgresql://user_admin:password123@localhost:5432/mi_db_crud"
+    JWT_SECRET="your-super-secret-jwt-key-change-this"
+    PORT=3000
+    ```
+
+    ### Step 5: Install Dependencies
+    ```bash
+    npm install
+    ```
+
+    ### Step 6: Setup Database
+    ```bash
+    npx prisma generate
+    npx prisma migrate dev --name init
+    ```
+
+    ### Step 7: Start the Server
+    ```bash
+    node index.js
+    ```
+  </Tab>
+
+  <Tab title="Existing PostgreSQL">
+    Use an existing PostgreSQL installation instead of Docker.
+
+    ### Step 1: Clone the Repository
+    ```bash
+    git clone <your-repository-url>
+    cd app-cr/backend
+    ```
+
+    ### Step 2: Create Database
+    Connect to your PostgreSQL instance and create a database:
+    ```sql
+    CREATE DATABASE mi_db_crud;
+    CREATE USER user_admin WITH PASSWORD 'password123';
+    GRANT ALL PRIVILEGES ON DATABASE mi_db_crud TO user_admin;
+    ```
+
+    ### Step 3: Configure Environment
+    Create `.env` file with your database connection:
+    ```bash
+    DATABASE_URL="postgresql://user_admin:password123@localhost:5432/mi_db_crud"
+    JWT_SECRET="your-super-secret-jwt-key-change-this"
+    PORT=3000
+    ```
+
+    <Warning>
+      Replace the credentials with your actual PostgreSQL username and password.
+    </Warning>
+
+    ### Step 4: Install and Setup
+    ```bash
+    npm install
+    npx prisma generate
+    npx prisma migrate dev --name init
+    node index.js
+    ```
+  </Tab>
+</Tabs>
+
+## Configuration
+
+### Environment Variables
+
+App CR uses the following environment variables:
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DATABASE_URL` | Yes | - | PostgreSQL connection string |
+| `JWT_SECRET` | Yes | - | Secret key for signing JWT tokens |
+| `PORT` | No | `3000` | Port for the Express server |
+
+### Database URL Format
+
+The `DATABASE_URL` follows this format:
+
+```
+postgresql://[USER]:[PASSWORD]@[HOST]:[PORT]/[DATABASE]
+```
+
+**Example:**
+```
+postgresql://user_admin:password123@localhost:5432/mi_db_crud
+```
+
+For cloud databases (e.g., Heroku, AWS RDS):
+```
+postgresql://username:password@host.region.rds.amazonaws.com:5432/database_name
+```
+
+### JWT Configuration
+
+The `JWT_SECRET` is used to sign authentication tokens. Choose a strong, random string:
+
+```bash
+# Generate a secure random secret (Linux/Mac)
+openssl rand -base64 32
+
+# Or use Node.js
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+## Database Schema
+
+App CR uses Prisma ORM with the following schema:
+
+```prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  tasks     Task[]
+}
+
+model Task {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  completed   Boolean  @default(false)
+  userId      Int
+  author      User     @relation(fields: [userId], references: [id])
+}
+```
+
+### Running Migrations
+
+When you modify the schema, generate and apply migrations:
+
+```bash
+# Create a new migration
+npx prisma migrate dev --name description_of_change
+
+# Apply migrations in production
+npx prisma migrate deploy
+
+# Reset database (development only)
+npx prisma migrate reset
+```
+
+## Dependencies
+
+App CR includes these core dependencies:
+
+```json
+{
+  "dependencies": {
+    "@prisma/client": "^6.19.2",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "prisma": "^6.19.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.3",
+    "dotenv": "^17.3.1"
+  }
+}
+```
+
+### Updating Dependencies
+
+Keep dependencies up to date:
+
+```bash
+# Check for outdated packages
+npm outdated
+
+# Update all packages
+npm update
+
+# Update specific package
+npm update express
+```
+
+## Server Configuration
+
+The Express server is configured in `backend/index.js`:
+
+```javascript
+require('dotenv').config();
+const express = require('express');
+const { PrismaClient } = require('@prisma/client');
+const cors = require('cors');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
+const prisma = new PrismaClient();
+const app = express();
+const TOKEN = process.env.JWT_SECRET;
+const PORT = process.env.PORT || 3000;
+
+// Middlewares
+app.use(cors());
+app.use(express.json());
+
+app.listen(PORT, () => {
+    console.log(`Servidor corriendo en: http://localhost:${PORT}`);
+});
+```
+
+### CORS Configuration
+
+CORS is enabled by default for all origins. For production, restrict origins:
+
+```javascript
+app.use(cors({
+  origin: 'https://your-frontend-domain.com',
+  credentials: true
+}));
+```
+
+### Port Configuration
+
+Change the server port via environment variable or directly:
+
+```bash
+# In .env
+PORT=8080
+
+# Or when starting the server
+PORT=8080 node index.js
+```
+
+## Database Tools
+
+### Prisma Studio
+
+Visual database browser:
+
+```bash
+npx prisma studio
+```
+
+Opens at `http://localhost:5555` for viewing and editing data.
+
+### Database Seeding
+
+Create a seed script `prisma/seed.js`:
+
+```javascript
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+
+async function main() {
+  const user = await prisma.user.create({
+    data: {
+      email: 'admin@example.com',
+      password: 'hashed_password_here',
+      tasks: {
+        create: [
+          { title: 'Welcome task', description: 'Get started with App CR', completed: false }
+        ]
+      }
+    }
+  });
+  console.log('Created user:', user);
+}
+
+main()
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());
+```
+
+Add to `package.json`:
+```json
+"prisma": {
+  "seed": "node prisma/seed.js"
+}
+```
+
+Run seed:
+```bash
+npx prisma db seed
+```
+
+## Production Deployment
+
+<Steps>
+  <Step title="Set Environment Variables">
+    Configure production environment variables (never commit `.env` files):
+    ```bash
+    DATABASE_URL="your-production-database-url"
+    JWT_SECRET="strong-random-secret"
+    PORT=3000
+    NODE_ENV=production
+    ```
+  </Step>
+
+  <Step title="Install Production Dependencies">
+    ```bash
+    npm ci --production
+    ```
+  </Step>
+
+  <Step title="Run Migrations">
+    ```bash
+    npx prisma migrate deploy
+    ```
+  </Step>
+
+  <Step title="Start Server">
+    Use a process manager like PM2:
+    ```bash
+    npm install -g pm2
+    pm2 start index.js --name app-cr
+    pm2 save
+    pm2 startup
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  The current implementation has security considerations:
+  - Passwords are not hashed before storage
+  - JWT authentication endpoints are not yet implemented
+  - No input validation middleware
+  
+  Implement these security features before deploying to production.
+</Warning>
+
+## Verification
+
+Verify your installation:
+
+<AccordionGroup>
+  <Accordion title="Check Server Health">
+    ```bash
+    curl http://localhost:3000/usuarios
+    ```
+    Should return an empty array or list of users.
+  </Accordion>
+
+  <Accordion title="Test Database Connection">
+    ```bash
+    npx prisma db pull
+    ```
+    Should sync schema without errors.
+  </Accordion>
+
+  <Accordion title="View Logs">
+    Check server output for errors:
+    ```bash
+    # If using PM2
+    pm2 logs app-cr
+
+    # If running directly
+    # Check console output where node index.js is running
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Module not found errors">
+    Ensure all dependencies are installed:
+    ```bash
+    rm -rf node_modules package-lock.json
+    npm install
+    ```
+  </Accordion>
+
+  <Accordion title="Database connection refused">
+    Check PostgreSQL is running:
+    ```bash
+    # For Docker
+    docker-compose ps
+    docker-compose logs postgres
+
+    # For system PostgreSQL
+    sudo systemctl status postgresql
+    ```
+  </Accordion>
+
+  <Accordion title="Port already in use">
+    Find and stop the process using the port:
+    ```bash
+    # Find process on port 3000
+    lsof -i :3000
+
+    # Kill the process
+    kill -9 <PID>
+
+    # Or use a different port
+    PORT=3001 node index.js
+    ```
+  </Accordion>
+
+  <Accordion title="Prisma client errors">
+    Regenerate Prisma client:
+    ```bash
+    npx prisma generate
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Reference" icon="book" href="/api-reference/users/create-user">
+    Explore available endpoints
+  </Card>
+  <Card title="Authentication" icon="shield" href="/authentication/overview">
+    Implement JWT authentication
+  </Card>
+</CardGroup>

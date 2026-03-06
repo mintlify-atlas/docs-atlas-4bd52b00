@@ -1,97 +1,74 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Welcome to App CR"
+description: "A RESTful API service for task management with user authentication"
 ---
 
-## Setting up
+## Introduction
 
-Get your documentation site up and running in minutes.
+App CR is a modern task management API built with Express.js, Prisma ORM, and PostgreSQL. It provides a complete backend solution for managing users and tasks with JWT-based authentication.
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
+<CardGroup cols={2}>
   <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
+    title="Quickstart"
+    icon="rocket"
+    href="/quickstart"
   >
-    Edit your docs locally and preview them in real time.
+    Get started with App CR in minutes
   </Card>
   <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
-
-## Create beautiful pages
-
-Everything you need to create world-class documentation.
-
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
+    title="API Reference"
     icon="code"
-    href="/essentials/code"
+    href="/api-reference/users/create-user"
   >
-    Add sample code to demonstrate how to use your product.
+    Explore all available endpoints
   </Card>
   <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
+    title="Authentication"
+    icon="shield-halved"
+    href="/authentication/overview"
   >
-    Display images and other media.
+    Learn about JWT authentication
   </Card>
   <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
+    title="Database Schema"
+    icon="database"
+    href="/database/schema"
   >
-    Write once and reuse across your docs.
+    Understand the data model
   </Card>
-</Columns>
+</CardGroup>
 
-## Need inspiration?
+## Key Features
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<CardGroup cols={2}>
+  <Card title="User Authentication" icon="user-lock">
+    Secure user registration and authentication with JWT tokens and bcrypt password hashing
+  </Card>
+  <Card title="Task Management" icon="list-check">
+    Complete CRUD operations for tasks with user ownership and authorization
+  </Card>
+  <Card title="Prisma ORM" icon="cube">
+    Type-safe database access with automatic migrations and schema management
+  </Card>
+  <Card title="Docker Ready" icon="docker">
+    Production-ready Docker Compose setup with PostgreSQL database
+  </Card>
+</CardGroup>
+
+## Quick Example
+
+Create a new user and authenticate:
+
+```bash
+# Create a new user
+curl -X POST http://localhost:3000/usuarios \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "securepassword"
+  }'
+```
+
+<Note>
+  Check out the [Quickstart](/quickstart) guide to set up your development environment and start making API calls.
+</Note>

@@ -1,0 +1,105 @@
+---
+title: 'Get Tasks'
+api: 'GET /tasks'
+description: 'Retrieve all tasks for the authenticated user'
+---
+
+<Note>
+  This endpoint requires implementation in the backend. Documentation reflects the expected API design based on the Task model schema.
+</Note>
+
+## Authentication
+
+This endpoint requires a valid JWT token in the Authorization header.
+
+```
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+## Query Parameters
+
+<ParamField query="completed" type="boolean">
+  Filter tasks by completion status. If not provided, returns all tasks.
+</ParamField>
+
+## Response
+
+Returns an array of task objects.
+
+<ResponseField name="id" type="integer">
+  The unique identifier for the task
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  The title of the task
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  The description of the task (null if not provided)
+</ResponseField>
+
+<ResponseField name="completed" type="boolean">
+  Whether the task is completed
+</ResponseField>
+
+<ResponseField name="userId" type="integer">
+  The ID of the user who owns this task
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL - All Tasks
+curl -X GET http://localhost:3000/tasks \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+```bash cURL - Completed Tasks Only
+curl -X GET "http://localhost:3000/tasks?completed=true" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+```bash cURL - Incomplete Tasks Only
+curl -X GET "http://localhost:3000/tasks?completed=false" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 OK
+[
+  {
+    "id": 1,
+    "title": "Complete API documentation",
+    "description": "Write comprehensive API docs for all task endpoints",
+    "completed": false,
+    "userId": 5
+  },
+  {
+    "id": 2,
+    "title": "Review pull requests",
+    "description": null,
+    "completed": true,
+    "userId": 5
+  }
+]
+```
+
+```json 200 OK - Empty
+[]
+```
+
+```json 401 Unauthorized
+{
+  "error": "Invalid or missing authentication token"
+}
+```
+
+```json 500 Internal Server Error
+{
+  "error": "Error retrieving tasks"
+}
+```
+
+</ResponseExample>
